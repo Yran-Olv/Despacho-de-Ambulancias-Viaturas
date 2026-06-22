@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Despacho de Ambulâncias</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🚑</div>
+        <div>
+          <h1>Despacho de Ambulâncias</h1>
+          <p>Fila de prioridade · Max-Heap</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-sec="dashboard">📋 Fila de despacho</button>
+        <button class="nav-btn" data-sec="acaminho">🚑 A caminho</button>
+        <button class="nav-btn" data-sec="veiculos">🚐 Viaturas</button>
+        <button class="nav-btn" data-sec="historico">📜 Histórico</button>
+        <button class="nav-btn" data-sec="cadastro">➕ Nova ocorrência</button>
+        <button class="nav-btn" data-sec="buscar">🔍 Buscar</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/swagger" target="_blank">Documentação Swagger →</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section id="sec-dashboard" class="section active">
+        <div class="page-header">
+          <div>
+            <h2>Fila de despacho</h2>
+            <p>Ocorrências ativas ordenadas por prioridade (Heap)</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-refresh">↻ Atualizar</button>
+        </div>
+
+        <div class="rules-panel panel" style="margin-bottom:1.5rem">
+          <div class="panel-header"><h3>Como funciona a prioridade?</h3></div>
+          <div style="padding:1rem 1.25rem;font-size:0.9rem;color:var(--muted);line-height:1.7">
+            <strong style="color:var(--text)">Score = Gravidade + Tipo + Pacientes + Espera</strong><br>
+            Gravidade: 20 · 40 · 60 · 80 · 100 &nbsp;|&nbsp;
+            Tipo: 2 · 4 · 6 · 8 · 10 · 12 &nbsp;|&nbsp;
+            Pacientes: 3 pts cada &nbsp;|&nbsp;
+            Espera: 1 pt/min (máx. 30) — atualiza a cada minuto; recarregue ou aguarde 1 min para ver mudança
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card"><span>Ocorrências ativas</span><strong id="stat-total">—</strong></div>
+          <div class="stat-card"><span>Páginas</span><strong id="stat-paginas">—</strong></div>
+          <div class="stat-card"><span>Estrutura</span><strong>Max-Heap</strong></div>
+        </div>
+
+        <div id="proxima-card" class="highlight-card empty">
+          <div class="empty-state">Carregando próximo despacho...</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Ranking da fila</h3>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Ocorrência</th>
+                  <th>Gravidade</th>
+                  <th>Tipo</th>
+                  <th>Pac.</th>
+                  <th>Espera</th>
+                  <th>Score</th>
+                  <th>Detalhe</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="fila-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span id="pag-info">—</span>
+            <button class="btn btn-secondary btn-sm" id="btn-prev">← Anterior</button>
+            <button class="btn btn-secondary btn-sm" id="btn-next">Próxima →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- A CAMINHO -->
+      <section id="sec-acaminho" class="section">
+        <div class="page-header">
+          <div>
+            <h2>Ambulâncias a caminho</h2>
+            <p>Ocorrências despachadas — aguardando chegada ao hospital</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-refresh-caminho">↻ Atualizar</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Em deslocamento</h3>
+            <span id="stat-caminho" class="hint">—</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ocorrência</th>
+                  <th>Endereço</th>
+                  <th>Gravidade</th>
+                  <th>Viatura</th>
+                  <th>Despachada em</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="caminho-body">
+                <tr><td colspan="6" class="empty-state">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIATURAS -->
+      <section id="sec-veiculos" class="section">
+        <div class="page-header">
+          <div>
+            <h2>Viaturas disponíveis</h2>
+            <p>Cadastre ambulâncias e acompanhe disponibilidade</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-refresh-veiculos">↻ Atualizar</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card"><span>Total cadastradas</span><strong id="stat-veiculos-total">—</strong></div>
+          <div class="stat-card"><span>Disponíveis</span><strong id="stat-veiculos-disp">—</strong></div>
+          <div class="stat-card"><span>Em atendimento</span><strong id="stat-veiculos-atend">—</strong></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1.5rem">
+          <div class="panel-header"><h3>Cadastrar viatura</h3></div>
+          <form id="form-veiculo" class="form-grid" style="padding:1.25rem">
+            <label>
+              Identificação *
+              <input name="identificacao" required placeholder="SAMU-03 ou ABC1D23" />
+              <span class="hint">Placa ou código interno</span>
+            </label>
+            <label>
+              Tipo *
+              <select name="tipo" required></select>
+            </label>
+            <div style="grid-column: 1 / -1">
+              <button type="submit" class="btn btn-primary">Cadastrar viatura</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>Frota cadastrada</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Identificação</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="veiculos-body">
+                <tr><td colspan="5" class="empty-state">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- HISTÓRICO -->
+      <section id="sec-historico" class="section">
+        <div class="page-header">
+          <div>
+            <h2>Histórico de atendimentos</h2>
+            <p>Ocorrências com baixa registrada no hospital</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-refresh-historico">↻ Atualizar</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Concluídas</h3>
+            <span id="stat-historico" class="hint">—</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ocorrência</th>
+                  <th>Endereço</th>
+                  <th>Viatura</th>
+                  <th>Despachada</th>
+                  <th>Baixa no hospital</th>
+                </tr>
+              </thead>
+              <tbody id="historico-body">
+                <tr><td colspan="5" class="empty-state">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span id="hist-pag-info">—</span>
+            <button class="btn btn-secondary btn-sm" id="btn-hist-prev">← Anterior</button>
+            <button class="btn btn-secondary btn-sm" id="btn-hist-next">Próxima →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CADASTRO -->
+      <section id="sec-cadastro" class="section">
+        <div class="page-header">
+          <div>
+            <h2>Nova ocorrência</h2>
+            <p>Cadastre na fila — gravidade e tipo em listas</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <form id="form-cadastro" class="form-grid">
+            <label>
+              CPF *
+              <input name="cpf" required placeholder="12345678901" />
+              <span class="hint">Somente números ou formatado</span>
+            </label>
+            <label>
+              Pacientes envolvidos *
+              <input name="pacientesEnvolvidos" type="number" min="1" max="99" value="1" required />
+            </label>
+            <label style="grid-column: 1 / -1">
+              Descrição *
+              <textarea name="descricao" required placeholder="Descreva a emergência"></textarea>
+            </label>
+            <label style="grid-column: 1 / -1">
+              Endereço *
+              <input name="endereco" required placeholder="Av. Brasil, 4500" />
+            </label>
+            <div class="form-grid two" style="grid-column: 1 / -1; padding: 0">
+              <label>
+                Gravidade *
+                <select name="gravidade" required></select>
+              </label>
+              <label>
+                Tipo de emergência *
+                <select name="tipoEmergencia" required></select>
+              </label>
+            </div>
+            <div style="grid-column: 1 / -1">
+              <button type="submit" class="btn btn-primary">Cadastrar na fila</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- BUSCAR -->
+      <section id="sec-buscar" class="section">
+        <div class="page-header">
+          <div>
+            <h2>Buscar ocorrências</h2>
+            <p>Por CPF e/ou trecho da descrição</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <form id="form-buscar" class="search-bar">
+            <label>
+              CPF
+              <input name="cpf" placeholder="98765432100" />
+            </label>
+            <label>
+              Descrição
+              <input name="descricao" placeholder="cardio, parto, trauma..." />
+            </label>
+            <button type="submit" class="btn btn-primary" style="align-self: end">Buscar</button>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Descrição</th>
+                  <th>Gravidade</th>
+                  <th>Tipo</th>
+                  <th>Pac.</th>
+                  <th>Espera</th>
+                  <th>Score</th>
+                  <th>CPF</th>
+                </tr>
+              </thead>
+              <tbody id="busca-body">
+                <tr><td colspan="8" class="empty-state">Informe CPF ou descrição para buscar.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL DESPACHAR -->
+  <div class="modal-backdrop" id="modal-despachar">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Despachar ambulância</h3>
+        <button class="btn btn-secondary btn-sm" id="btn-cancelar-desp">✕</button>
+      </div>
+      <form id="form-despachar">
+        <div class="modal-body">
+          <p id="despachar-descricao" style="color:var(--muted);margin:0 0 1rem"></p>
+          <label>
+            Selecione a viatura disponível *
+            <select name="veiculoId" required id="select-veiculo-despacho">
+              <option value="">Carregando...</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancelar-desp2">Cancelar</button>
+          <button type="submit" class="btn btn-success">🚑 Confirmar despacho</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR -->
+  <div class="modal-backdrop" id="modal-editar">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Editar ocorrência</h3>
+        <button class="btn btn-secondary btn-sm" id="btn-cancelar-edit">✕</button>
+      </div>
+      <form id="form-editar">
+        <div class="modal-body">
+          <label>CPF *<input name="cpf" required /></label>
+          <label>Descrição *<textarea name="descricao" required></textarea></label>
+          <label>Endereço *<input name="endereco" required /></label>
+          <label>Gravidade *<select name="gravidade" required></select></label>
+          <label>Tipo *<select name="tipoEmergencia" required></select></label>
+          <label>Pacientes *<input name="pacientesEnvolvidos" type="number" min="1" max="99" required /></label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancelar-edit2">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar e recalcular</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

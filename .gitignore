@@ -1,0 +1,21 @@
+## bin/, obj/, IDE
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+
+## .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Env
+.env
+*.env.local
+ROTEIRO_APRESENTACAO.md
